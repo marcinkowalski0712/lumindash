@@ -1,0 +1,307 @@
+{{template "layout.html" .}}
+
+{{define "head"}}
+<style>
+  /* Tabs */
+  .tab-list { display: flex; border-bottom: 1px solid #2a2d3a; padding: 0 16px; background: rgba(255,255,255,0.01); }
+  .tab-btn {
+    padding: 12px 18px; font-size: 13px; font-weight: 500; color: #64748b;
+    border: none; background: transparent; cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab-btn:hover { color: #94a3b8; }
+  .tab-btn.active { color: #818cf8; border-bottom-color: #6366f1; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Config table */
+  .cfg-table { border-collapse: collapse; width: 100%; }
+  .cfg-table th {
+    text-align: left; padding: 10px 16px;
+    font-size: 11px; font-weight: 600; color: #64748b;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid #2a2d3a;
+  }
+  .cfg-table td { padding: 11px 16px; border-bottom: 1px solid rgba(42,45,58,0.5); }
+  .cfg-table tr:last-child td { border-bottom: none; }
+  .cfg-table tr:hover td { background: rgba(99,102,241,0.04); }
+
+  /* Toggle confirm states */
+  .toggle-wrapper { display: flex; align-items: center; gap: 10px; }
+  .toggle-label { font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+  .toggle-on  { color: #4ade80; }
+  .toggle-off { color: #64748b; }
+
+  /* Info chip */
+  .info-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 4px; font-size: 11px;
+    background: rgba(255,255,255,0.04); border: 1px solid #2a2d3a;
+    color: #64748b; font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+  }
+
+  /* Section label */
+  .section-label {
+    font-size: 11px; font-weight: 500; color: #64748b;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 10px 16px 6px;
+    border-top: 1px solid #2a2d3a;
+  }
+  .section-label:first-child { border-top: none; padding-top: 14px; }
+
+  /* Trigger name cell */
+  .trigger-name { font-size: 12px; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; }
+  .trigger-host { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+  /* Expression preview */
+  .expr {
+    font-size: 11px; color: #64748b; font-family: 'JetBrains Mono', monospace;
+    max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* Confirm button */
+  .action-confirm {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 500;
+    cursor: pointer; transition: all 0.15s; border: 1px solid transparent;
+    font-family: 'Inter', sans-serif;
+  }
+  .confirm-enable  { background: rgba(34,197,94,0.1); color: #4ade80; border-color: rgba(34,197,94,0.25); }
+  .confirm-enable:hover  { background: rgba(34,197,94,0.2); border-color: rgba(34,197,94,0.5); }
+  .confirm-disable { background: rgba(239,68,68,0.08); color: #f87171; border-color: rgba(239,68,68,0.2); }
+  .confirm-disable:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.4); }
+
+  /* Trigger severity dot */
+  .sev-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block;
+  }
+</style>
+{{end}}
+
+{{define "content"}}
+
+<div class="rounded-xl overflow-hidden" style="background:#1a1d27; border:1px solid #2a2d3a;">
+
+  <!-- Tab bar -->
+  <div class="tab-list">
+    <button class="tab-btn {{if eq .ActiveTab "hosts"}}active{{end}}" onclick="showTab('hosts', this)">
+      <span class="flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+        Hosts
+        <span class="num" style="font-size:11px; color:#64748b; background:rgba(255,255,255,0.04); border:1px solid #2a2d3a; border-radius:9999px; padding:1px 7px;">{{len .Hosts}}</span>
+      </span>
+    </button>
+    <button class="tab-btn {{if eq .ActiveTab "triggers"}}active{{end}}" onclick="showTab('triggers', this)">
+      <span class="flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Triggers
+        <span class="num" style="font-size:11px; color:#64748b; background:rgba(255,255,255,0.04); border:1px solid #2a2d3a; border-radius:9999px; padding:1px 7px;">{{len .Triggers}}</span>
+      </span>
+    </button>
+  </div>
+
+  <!-- ── HOSTS TAB ── -->
+  <div id="tab-hosts" class="tab-panel {{if eq .ActiveTab "hosts"}}active{{end}}">
+    <table class="cfg-table">
+      <thead>
+        <tr>
+          <th>Hostname</th>
+          <th>IP Address</th>
+          <th>Groups</th>
+          <th>Templates</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Hosts}}
+        <tr>
+          <td>
+            <div style="font-size:13px; font-weight:500; color:#f1f5f9;">{{.Name}}</div>
+            {{if .Description}}<div style="font-size:11px; color:#64748b; margin-top:1px;">{{.Description}}</div>{{end}}
+          </td>
+          <td>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#94a3b8;">{{.IP}}</span>
+          </td>
+          <td>
+            <div class="flex flex-wrap gap-1">
+              {{range .Groups}}<span class="info-chip">{{.}}</span>{{end}}
+            </div>
+          </td>
+          <td>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#64748b;">{{.TemplateCount}} templates</span>
+          </td>
+          <td>
+            <div class="toggle-wrapper">
+              <label class="toggle-switch" title="{{if .Enabled}}Enabled — click to disable{{else}}Disabled — click to enable{{end}}">
+                <input type="checkbox" {{if .Enabled}}checked{{end}} onchange="toggleHost({{.ID}}, this)">
+                <span class="toggle-track"></span>
+              </label>
+              <span class="toggle-label {{if .Enabled}}toggle-on{{else}}toggle-off{{end}}" id="host-status-{{.ID}}">
+                {{if .Enabled}}Enabled{{else}}Disabled{{end}}
+              </span>
+            </div>
+          </td>
+          <td>
+            {{if .Enabled}}
+            <button class="action-confirm confirm-disable" onclick="confirmToggleHost({{.ID}}, false, '{{.Name}}')">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+              Disable
+            </button>
+            {{else}}
+            <button class="action-confirm confirm-enable" onclick="confirmToggleHost({{.ID}}, true, '{{.Name}}')">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Enable
+            </button>
+            {{end}}
+          </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="6" style="padding:48px; text-align:center; color:#64748b; font-size:13px;">No hosts found.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── TRIGGERS TAB ── -->
+  <div id="tab-triggers" class="tab-panel {{if eq .ActiveTab "triggers"}}active{{end}}">
+    <table class="cfg-table">
+      <thead>
+        <tr>
+          <th>Trigger</th>
+          <th>Host</th>
+          <th>Severity</th>
+          <th>Expression</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Triggers}}
+        <tr>
+          <td>
+            <div class="trigger-name">{{.Name}}</div>
+          </td>
+          <td>
+            <a href="/hosts/{{.HostID}}" style="font-size:12px; color:#818cf8; text-decoration:none; font-family:'JetBrains Mono',monospace;">{{.HostName}}</a>
+          </td>
+          <td>
+            {{if eq .Severity 5}}<span class="badge badge-disaster">Disaster</span>
+            {{else if eq .Severity 4}}<span class="badge badge-high">High</span>
+            {{else if eq .Severity 3}}<span class="badge badge-average">Average</span>
+            {{else if eq .Severity 2}}<span class="badge badge-warning">Warning</span>
+            {{else}}<span class="badge badge-info">Info</span>{{end}}
+          </td>
+          <td>
+            <div class="expr" title="{{.Expression}}">{{.Expression}}</div>
+          </td>
+          <td>
+            <div class="toggle-wrapper">
+              <label class="toggle-switch">
+                <input type="checkbox" {{if .Enabled}}checked{{end}} onchange="toggleTrigger({{.ID}}, this)">
+                <span class="toggle-track"></span>
+              </label>
+              <span class="toggle-label {{if .Enabled}}toggle-on{{else}}toggle-off{{end}}" id="trigger-status-{{.ID}}">
+                {{if .Enabled}}Enabled{{else}}Disabled{{end}}
+              </span>
+            </div>
+          </td>
+          <td>
+            {{if .Enabled}}
+            <button class="action-confirm confirm-disable" onclick="confirmToggleTrigger({{.ID}}, false, '{{.Name}}')">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+              Disable
+            </button>
+            {{else}}
+            <button class="action-confirm confirm-enable" onclick="confirmToggleTrigger({{.ID}}, true, '{{.Name}}')">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Enable
+            </button>
+            {{end}}
+          </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="6" style="padding:48px; text-align:center; color:#64748b; font-size:13px;">No triggers found.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Toast notification -->
+<div id="toast" style="
+  position:fixed; bottom:24px; right:24px; z-index:100;
+  background:#1a1d27; border:1px solid #2a2d3a; border-radius:8px;
+  padding:10px 16px; font-size:13px; color:#f1f5f9;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);
+  transform:translateY(80px); opacity:0;
+  transition:transform 0.25s ease, opacity 0.25s ease;
+  display:flex; align-items:center; gap:8px;
+">
+  <span id="toast-icon">✓</span>
+  <span id="toast-msg">Done</span>
+</div>
+
+{{end}}
+
+{{define "scripts"}}
+<script>
+  function showTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  function showToast(msg, success=true) {
+    const t = document.getElementById('toast');
+    t.querySelector('#toast-icon').textContent = success ? '✓' : '✗';
+    t.querySelector('#toast-icon').style.color = success ? '#22c55e' : '#ef4444';
+    t.querySelector('#toast-msg').textContent = msg;
+    t.style.borderColor = success ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)';
+    t.style.transform = 'translateY(0)'; t.style.opacity = '1';
+    setTimeout(() => { t.style.transform = 'translateY(80px)'; t.style.opacity = '0'; }, 3000);
+  }
+
+  async function confirmToggleHost(id, enable, name) {
+    const action = enable ? 'enable' : 'disable';
+    if (!confirm(`${action.charAt(0).toUpperCase()+action.slice(1)} host "${name}"?`)) return;
+    try {
+      const resp = await fetch('/api/hosts/' + id + '/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: enable }),
+      });
+      if (resp.ok) {
+        showToast(`Host "${name}" ${action}d successfully`);
+        setTimeout(() => location.reload(), 800);
+      } else { showToast('API error — could not update host', false); }
+    } catch(e) { showToast('Network error', false); }
+  }
+
+  async function confirmToggleTrigger(id, enable, name) {
+    const action = enable ? 'enable' : 'disable';
+    if (!confirm(`${action.charAt(0).toUpperCase()+action.slice(1)} trigger "${name}"?`)) return;
+    try {
+      const resp = await fetch('/api/triggers/' + id + '/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: enable }),
+      });
+      if (resp.ok) {
+        showToast(`Trigger "${name}" ${action}d successfully`);
+        setTimeout(() => location.reload(), 800);
+      } else { showToast('API error — could not update trigger', false); }
+    } catch(e) { showToast('Network error', false); }
+  }
+
+  // Sync toggle checkbox with button click (visual only, actual action via confirm buttons)
+  function toggleHost(id, checkbox) { checkbox.checked = !checkbox.checked; } // revert — use buttons
+  function toggleTrigger(id, checkbox) { checkbox.checked = !checkbox.checked; }
+</script>
+{{end}}

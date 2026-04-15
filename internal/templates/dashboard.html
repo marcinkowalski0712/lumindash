@@ -1,0 +1,233 @@
+{{template "layout.html" .}}
+
+{{define "head"}}
+<style>
+  /* Stat card severity indicator */
+  .stat-disaster { border-top: 3px solid #ef4444; }
+  .stat-high     { border-top: 3px solid #f59e0b; }
+  .stat-average  { border-top: 3px solid #fde68a; }
+  .stat-warning  { border-top: 3px solid #6366f1; }
+  .stat-info     { border-top: 3px solid #64748b; }
+  .stat-ok       { border-top: 3px solid #22c55e; }
+  .stat-neutral  { border-top: 3px solid #2a2d3a; }
+
+  /* Animated counter */
+  .big-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  /* Problems table ack button */
+  .ack-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 5px;
+    font-size: 11px; font-weight: 500;
+    background: rgba(99,102,241,0.12); color: #818cf8;
+    border: 1px solid rgba(99,102,241,0.25);
+    cursor: pointer; transition: all 0.15s;
+    font-family: 'Inter', sans-serif;
+  }
+  .ack-btn:hover { background: rgba(99,102,241,0.22); border-color: rgba(99,102,241,0.5); }
+
+  .ack-done {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 5px;
+    font-size: 11px; font-weight: 500;
+    color: #4ade80;
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* Duration display */
+  .duration { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #64748b; }
+
+  /* Problem row severity left border */
+  .prob-disaster { border-left: 3px solid #ef4444 !important; }
+  .prob-high     { border-left: 3px solid #f59e0b !important; }
+  .prob-average  { border-left: 3px solid #fde68a !important; }
+  .prob-warning  { border-left: 3px solid #6366f1 !important; }
+  .prob-info     { border-left: 3px solid #64748b !important; }
+</style>
+{{end}}
+
+{{define "content"}}
+
+<!-- ── SUMMARY CARDS ── -->
+<div class="grid gap-4 mb-6" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));">
+
+  <!-- Total Hosts -->
+  <div class="card-hover rounded-xl p-4 stat-neutral" style="background:#1a1d27; border:1px solid #2a2d3a;">
+    <div style="font-size:11px; font-weight:500; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;">Total Hosts</div>
+    <div class="big-num" style="color:#f1f5f9;">{{.Stats.TotalHosts}}</div>
+    <div style="font-size:11px; color:#64748b; margin-top:6px; font-family:'JetBrains Mono',monospace;">
+      <span style="color:#22c55e;">{{.Stats.EnabledHosts}}</span> enabled
+    </div>
+  </div>
+
+  <!-- Hosts with Problems -->
+  <div class="card-hover rounded-xl p-4 stat-high" style="background:#1a1d27; border:1px solid #2a2d3a;">
+    <div style="font-size:11px; font-weight:500; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;">With Problems</div>
+    <div class="big-num" style="color:#fbbf24;">{{.Stats.HostsWithProblems}}</div>
+    <div style="font-size:11px; color:#64748b; margin-top:6px; font-family:'JetBrains Mono',monospace;">hosts affected</div>
+  </div>
+
+  <!-- Active Triggers -->
+  <div class="card-hover rounded-xl p-4 stat-neutral" style="background:#1a1d27; border:1px solid #2a2d3a;">
+    <div style="font-size:11px; font-weight:500; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;">Active Triggers</div>
+    <div class="big-num" style="color:#f1f5f9;">{{.Stats.ActiveTriggers}}</div>
+    <div style="font-size:11px; color:#64748b; margin-top:6px; font-family:'JetBrains Mono',monospace;">firing now</div>
+  </div>
+
+  <!-- Disaster -->
+  <div class="card-hover rounded-xl p-4 stat-disaster" style="background:#1a1d27; border:1px solid #2a2d3a;">
+    <div style="font-size:11px; font-weight:500; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;">Disaster</div>
+    <div class="big-num" style="color:#f87171;">{{.Stats.Disaster}}</div>
+    <div style="font-size:11px; color:#64748b; margin-top:6px; font-family:'JetBrains Mono',monospace;">severity 5</div>
+  </div>
+
+  <!-- High -->
+  <div class="card-hover rounded-xl p-4 stat-high" style="background:#1a1d27; border:1px solid #2a2d3a;">
+    <div style="font-size:11px; font-weight:500; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;">High</div>
+    <div class="big-num" style="color:#fbbf24;">{{.Stats.High}}</div>
+    <div style="font-size:11px; color:#64748b; margin-top:6px; font-family:'JetBrains Mono',monospace;">severity 4</div>
+  </div>
+
+  <!-- Average -->
+  <div class="card-hover rounded-xl p-4 stat-average" style="background:#1a1d27; border:1px solid #2a2d3a;">
+    <div style="font-size:11px; font-weight:500; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;">Average</div>
+    <div class="big-num" style="color:#fde68a;">{{.Stats.Average}}</div>
+    <div style="font-size:11px; color:#64748b; margin-top:6px; font-family:'JetBrains Mono',monospace;">severity 3</div>
+  </div>
+
+  <!-- Warning -->
+  <div class="card-hover rounded-xl p-4 stat-warning" style="background:#1a1d27; border:1px solid #2a2d3a;">
+    <div style="font-size:11px; font-weight:500; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;">Warning</div>
+    <div class="big-num" style="color:#a5b4fc;">{{.Stats.Warning}}</div>
+    <div style="font-size:11px; color:#64748b; margin-top:6px; font-family:'JetBrains Mono',monospace;">severity 2</div>
+  </div>
+
+  <!-- Info -->
+  <div class="card-hover rounded-xl p-4 stat-info" style="background:#1a1d27; border:1px solid #2a2d3a;">
+    <div style="font-size:11px; font-weight:500; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;">Info</div>
+    <div class="big-num" style="color:#94a3b8;">{{.Stats.Info}}</div>
+    <div style="font-size:11px; color:#64748b; margin-top:6px; font-family:'JetBrains Mono',monospace;">severity 1</div>
+  </div>
+
+</div>
+
+<!-- ── PROBLEMS TABLE ── -->
+<div class="rounded-xl overflow-hidden" style="background:#1a1d27; border:1px solid #2a2d3a;">
+
+  <!-- Table header bar -->
+  <div class="flex items-center justify-between px-5 py-3" style="border-bottom:1px solid #2a2d3a;">
+    <div class="flex items-center gap-2">
+      <div class="w-2 h-2 rounded-full" style="background:#ef4444; box-shadow:0 0 6px #ef4444;"></div>
+      <span style="font-size:13px; font-weight:600; color:#f1f5f9;">Active Problems</span>
+      <span class="num" style="font-size:12px; color:#64748b; background:rgba(255,255,255,0.04); border:1px solid #2a2d3a; border-radius:9999px; padding:1px 8px;">
+        {{.Stats.ActiveTriggers}}
+      </span>
+    </div>
+    <div style="font-size:11px; color:#64748b; font-family:'JetBrains Mono',monospace;">
+      auto-refresh in <span id="countdown" style="color:#818cf8;">30s</span>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="overflow-x-auto">
+    <table class="w-full zebra" style="border-collapse:collapse;">
+      <thead>
+        <tr style="background:rgba(255,255,255,0.02);">
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Host</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Trigger</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Severity</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Duration</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Ack</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Problems}}
+        <tr class="table-row-hover" style="border-left:3px solid transparent;" onclick="window.location='/hosts/{{.HostID}}'">
+          <td style="padding:11px 16px;">
+            <div style="font-size:13px; font-weight:500; color:#f1f5f9;">{{.HostName}}</div>
+            <div style="font-size:11px; color:#64748b; font-family:'JetBrains Mono',monospace; margin-top:1px;">{{.HostIP}}</div>
+          </td>
+          <td style="padding:11px 16px; max-width:320px;">
+            <div style="font-size:13px; color:#e2e8f0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{.TriggerName}}</div>
+          </td>
+          <td style="padding:11px 16px;">
+            {{if eq .Severity 5}}<span class="badge badge-disaster">Disaster</span>
+            {{else if eq .Severity 4}}<span class="badge badge-high">High</span>
+            {{else if eq .Severity 3}}<span class="badge badge-average">Average</span>
+            {{else if eq .Severity 2}}<span class="badge badge-warning">Warning</span>
+            {{else}}<span class="badge badge-info">Info</span>{{end}}
+          </td>
+          <td style="padding:11px 16px;">
+            <span class="duration">{{.Duration}}</span>
+          </td>
+          <td style="padding:11px 16px;" onclick="event.stopPropagation()">
+            {{if .Acknowledged}}
+              <span class="ack-done">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                Acked
+              </span>
+            {{else}}
+              <button class="ack-btn" onclick="acknowledgeEvent({{.EventID}}, this)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                Ack
+              </button>
+            {{end}}
+          </td>
+        </tr>
+        {{else}}
+        <tr>
+          <td colspan="5" style="padding:48px 16px; text-align:center;">
+            <div style="color:#22c55e; margin-bottom:8px;">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto;display:block;opacity:0.7;">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            </div>
+            <div style="font-size:14px; font-weight:500; color:#4ade80;">All systems operational</div>
+            <div style="font-size:12px; color:#64748b; margin-top:4px;">No active problems detected</div>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+  // Countdown timer
+  let secs = 30;
+  const el = document.getElementById('countdown');
+  if (el) {
+    setInterval(() => {
+      secs--;
+      if (secs <= 0) secs = 30;
+      el.textContent = secs + 's';
+    }, 1000);
+  }
+
+  // Acknowledge via API
+  async function acknowledgeEvent(eventId, btn) {
+    btn.disabled = true;
+    btn.textContent = '...';
+    try {
+      const resp = await fetch('/api/events/' + eventId + '/acknowledge', { method: 'POST' });
+      if (resp.ok) {
+        const cell = btn.parentElement;
+        cell.innerHTML = '<span class="ack-done"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Acked</span>';
+      } else {
+        btn.textContent = 'Error';
+        btn.style.color = '#ef4444';
+      }
+    } catch(e) {
+      btn.textContent = 'Error';
+    }
+  }
+</script>
+{{end}}

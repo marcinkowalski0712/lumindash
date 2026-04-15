@@ -1,0 +1,166 @@
+{{template "layout.html" .}}
+
+{{define "head"}}
+<style>
+  /* Availability indicator */
+  .avail-dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0;
+  }
+  .avail-ok      { background: #22c55e; box-shadow: 0 0 5px rgba(34,197,94,0.6); }
+  .avail-err     { background: #ef4444; box-shadow: 0 0 5px rgba(239,68,68,0.6); }
+  .avail-unknown { background: #64748b; }
+
+  /* Status badge */
+  .status-enabled  { color: #4ade80; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); border-radius: 9999px; padding: 2px 8px; font-size: 11px; font-weight: 500; }
+  .status-disabled { color: #94a3b8; background: rgba(100,116,139,0.1); border: 1px solid rgba(100,116,139,0.25); border-radius: 9999px; padding: 2px 8px; font-size: 11px; font-weight: 500; }
+
+  /* Problem count badge */
+  .prob-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 20px; height: 20px; border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
+    padding: 0 5px;
+  }
+  .prob-count-0  { color: #64748b; background: transparent; }
+  .prob-count-ok { color: #4ade80; background: rgba(34,197,94,0.12); }
+  .prob-count-hi { color: #fbbf24; background: rgba(245,158,11,0.12); }
+  .prob-count-cr { color: #f87171; background: rgba(239,68,68,0.12); }
+
+  /* Filter bar */
+  .filter-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 14px 16px;
+    border-bottom: 1px solid #2a2d3a;
+    background: rgba(255,255,255,0.015);
+  }
+
+  /* Group tag */
+  .group-tag {
+    display: inline-flex; align-items: center;
+    padding: 2px 7px; border-radius: 4px;
+    font-size: 11px; color: #94a3b8;
+    background: rgba(255,255,255,0.04); border: 1px solid #2a2d3a;
+    white-space: nowrap;
+  }
+
+  /* Search icon wrapper */
+  .search-wrap { position: relative; }
+  .search-wrap svg { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #64748b; }
+  .search-wrap input { padding-left: 30px; width: 220px; }
+</style>
+{{end}}
+
+{{define "content"}}
+
+<!-- Filter Bar -->
+<div class="rounded-xl overflow-hidden mb-5" style="background:#1a1d27; border:1px solid #2a2d3a;">
+  <div class="filter-bar">
+    <!-- Search -->
+    <div class="search-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <form method="GET" action="/hosts" style="display:contents;">
+        <input type="search" name="search" placeholder="Search hosts…" value="{{.Filter.Search}}" />
+      </form>
+    </div>
+
+    <!-- Group filter -->
+    <form method="GET" action="/hosts" style="display:contents;">
+      <select name="group" onchange="this.form.submit()">
+        <option value="">All Groups</option>
+        {{range .Groups}}
+        <option value="{{.ID}}" {{if eq $.Filter.GroupID .ID}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+    </form>
+
+    <!-- Status filter -->
+    <form method="GET" action="/hosts" style="display:contents;">
+      <select name="status" onchange="this.form.submit()">
+        <option value="">All Status</option>
+        <option value="enabled"  {{if eq .Filter.Status "enabled"}}selected{{end}}>Enabled</option>
+        <option value="disabled" {{if eq .Filter.Status "disabled"}}selected{{end}}>Disabled</option>
+      </select>
+    </form>
+
+    <!-- Result count -->
+    <div style="margin-left:auto; font-size:12px; color:#64748b; font-family:'JetBrains Mono',monospace;">
+      {{.TotalHosts}} hosts
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="overflow-x-auto">
+    <table class="w-full zebra" style="border-collapse:collapse;">
+      <thead>
+        <tr style="background:rgba(255,255,255,0.02);">
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Hostname</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">IP Address</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Groups</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Status</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Agent</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Problems</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Hosts}}
+        <tr class="table-row-hover" onclick="window.location='/hosts/{{.ID}}'">
+          <td style="padding:11px 16px;">
+            <div style="font-size:13px; font-weight:500; color:#f1f5f9;">{{.Name}}</div>
+            {{if .Description}}<div style="font-size:11px; color:#64748b; margin-top:1px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{.Description}}</div>{{end}}
+          </td>
+          <td style="padding:11px 16px;">
+            <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#94a3b8;">{{.IP}}</span>
+          </td>
+          <td style="padding:11px 16px;">
+            <div class="flex flex-wrap gap-1">
+              {{range .Groups}}<span class="group-tag">{{.}}</span>{{end}}
+            </div>
+          </td>
+          <td style="padding:11px 16px;">
+            {{if .Enabled}}
+              <span class="status-enabled">Enabled</span>
+            {{else}}
+              <span class="status-disabled">Disabled</span>
+            {{end}}
+          </td>
+          <td style="padding:11px 16px;">
+            <div class="flex items-center gap-2">
+              {{if eq .Available 1}}
+                <div class="avail-dot avail-ok"></div>
+                <span style="font-size:12px; color:#4ade80;">OK</span>
+              {{else if eq .Available 2}}
+                <div class="avail-dot avail-err"></div>
+                <span style="font-size:12px; color:#f87171;">Error</span>
+              {{else}}
+                <div class="avail-dot avail-unknown"></div>
+                <span style="font-size:12px; color:#64748b;">Unknown</span>
+              {{end}}
+            </div>
+          </td>
+          <td style="padding:11px 16px;">
+            {{if eq .ProblemCount 0}}
+              <span class="prob-count prob-count-0">—</span>
+            {{else if le .ProblemCount 2}}
+              <span class="prob-count prob-count-ok">{{.ProblemCount}}</span>
+            {{else if le .ProblemCount 5}}
+              <span class="prob-count prob-count-hi">{{.ProblemCount}}</span>
+            {{else}}
+              <span class="prob-count prob-count-cr">{{.ProblemCount}}</span>
+            {{end}}
+          </td>
+        </tr>
+        {{else}}
+        <tr>
+          <td colspan="6" style="padding:48px; text-align:center; color:#64748b; font-size:13px;">
+            No hosts match the current filter.
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{{end}}

@@ -1,0 +1,282 @@
+{{template "layout.html" .}}
+
+{{define "head"}}
+<script src="https://cdn.jsdelivr.net/npm/uplot@1.6.24/dist/uPlot.iife.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.24/dist/uPlot.min.css">
+<style>
+  /* Override uPlot theming for dark mode */
+  .uplot, .u-wrap { background: transparent !important; }
+  .u-title  { color: #94a3b8 !important; font-family: 'Inter', sans-serif !important; font-size: 12px !important; }
+  .u-legend { color: #94a3b8 !important; font-family: 'JetBrains Mono', monospace !important; font-size: 11px !important; }
+  .u-legend tr.u-series > * { padding: 4px 10px !important; }
+  .u-select { background: rgba(99,102,241,0.1) !important; border: 1px solid rgba(99,102,241,0.3) !important; }
+
+  /* Time range pills */
+  .time-range-btn {
+    padding: 5px 14px; border-radius: 6px;
+    font-size: 12px; font-weight: 500; font-family: 'JetBrains Mono', monospace;
+    border: 1px solid #2a2d3a; background: transparent; color: #64748b;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .time-range-btn:hover { border-color: #6366f1; color: #818cf8; }
+  .time-range-btn.active {
+    background: rgba(99,102,241,0.2); border-color: #6366f1; color: #818cf8;
+  }
+
+  /* Selectors row */
+  .selectors-row {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 14px 18px; border-bottom: 1px solid #2a2d3a;
+  }
+  .selector-label {
+    font-size: 11px; font-weight: 500; color: #64748b;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-right: -4px;
+  }
+  .selector-label + select { min-width: 200px; }
+
+  /* Graph container */
+  #chart-container {
+    padding: 20px;
+    position: relative;
+  }
+  #chart-wrap {
+    width: 100%;
+    height: 340px;
+    position: relative;
+  }
+  #chart-placeholder {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 340px; color: #64748b;
+  }
+
+  /* Latest value card */
+  .metric-stat {
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 14px 18px; border-right: 1px solid #2a2d3a;
+    min-width: 120px;
+  }
+  .metric-stat:last-child { border-right: none; }
+  .metric-stat-label { font-size: 10px; font-weight: 500; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; }
+  .metric-stat-value { font-size: 20px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: #818cf8; }
+  .metric-stat-unit  { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+  /* Loading overlay */
+  #loading-overlay {
+    position: absolute; inset: 0; background: rgba(15,17,23,0.7);
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px; display: none; z-index: 10;
+  }
+  .spinner {
+    width: 28px; height: 28px; border: 2px solid #2a2d3a;
+    border-top-color: #6366f1; border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+{{end}}
+
+{{define "content"}}
+
+<div class="rounded-xl overflow-hidden" style="background:#1a1d27; border:1px solid #2a2d3a;">
+
+  <!-- Selectors row -->
+  <div class="selectors-row">
+    <span class="selector-label">Host</span>
+    <select id="host-select" onchange="onHostChange()">
+      <option value="">— select host —</option>
+      {{range .Hosts}}
+      <option value="{{.ID}}" {{if eq $.SelectedHostID .ID}}selected{{end}}>{{.Name}}</option>
+      {{end}}
+    </select>
+
+    <span class="selector-label" style="margin-left:8px;">Item</span>
+    <select id="item-select" onchange="fetchMetric()">
+      <option value="">— select item —</option>
+      {{range .Items}}
+      <option value="{{.ID}}" {{if eq $.SelectedItemID .ID}}selected{{end}}>{{.Name}}</option>
+      {{end}}
+    </select>
+
+    <!-- Time range -->
+    <div class="flex items-center gap-2" style="margin-left:auto;">
+      <button class="time-range-btn {{if eq .TimeRange "1h"}}active{{end}}"  onclick="setRange('1h')">1h</button>
+      <button class="time-range-btn {{if eq .TimeRange "6h"}}active{{end}}"  onclick="setRange('6h')">6h</button>
+      <button class="time-range-btn {{if eq .TimeRange "24h"}}active{{end}}" onclick="setRange('24h')">24h</button>
+      <button class="time-range-btn {{if eq .TimeRange "7d"}}active{{end}}"  onclick="setRange('7d')">7d</button>
+      <button class="time-range-btn {{if eq .TimeRange "30d"}}active{{end}}" onclick="setRange('30d')">30d</button>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="flex" id="stats-row" style="border-bottom:1px solid #2a2d3a; display:none !important;">
+    <div class="metric-stat">
+      <span class="metric-stat-label">Current</span>
+      <span class="metric-stat-value" id="stat-current">—</span>
+      <span class="metric-stat-unit" id="stat-unit"></span>
+    </div>
+    <div class="metric-stat">
+      <span class="metric-stat-label">Min</span>
+      <span class="metric-stat-value" id="stat-min" style="color:#22c55e;">—</span>
+      <span class="metric-stat-unit">in range</span>
+    </div>
+    <div class="metric-stat">
+      <span class="metric-stat-label">Max</span>
+      <span class="metric-stat-value" id="stat-max" style="color:#f87171;">—</span>
+      <span class="metric-stat-unit">in range</span>
+    </div>
+    <div class="metric-stat">
+      <span class="metric-stat-label">Avg</span>
+      <span class="metric-stat-value" id="stat-avg" style="color:#a5b4fc;">—</span>
+      <span class="metric-stat-unit">in range</span>
+    </div>
+    <div class="metric-stat">
+      <span class="metric-stat-label">Points</span>
+      <span class="metric-stat-value" id="stat-points" style="color:#64748b; font-size:16px;">—</span>
+      <span class="metric-stat-unit">samples</span>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div id="chart-container">
+    <div id="loading-overlay"><div class="spinner"></div></div>
+    <div id="chart-wrap">
+      <div id="chart-placeholder">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="opacity:0.3; margin-bottom:12px;">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        <div style="font-size:13px; font-weight:500;">Select a host and item to view metrics</div>
+        <div style="font-size:12px; margin-top:4px; opacity:0.6;">Time-series data will appear here</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+  let chart = null;
+  let currentRange = '{{.TimeRange}}' || '1h';
+
+  // uPlot dark theme config
+  function buildChartOpts(width, label, unit) {
+    return {
+      width: width,
+      height: 320,
+      title: label,
+      cursor: { drag: { x: true, y: false }, sync: { key: 'lumindash' } },
+      scales: { x: { time: true }, y: { auto: true } },
+      axes: [
+        {
+          stroke: '#64748b',
+          grid: { stroke: '#2a2d3a', width: 1 },
+          ticks: { stroke: '#2a2d3a' },
+          font: '11px JetBrains Mono',
+        },
+        {
+          stroke: '#64748b',
+          grid: { stroke: '#2a2d3a', width: 1 },
+          ticks: { stroke: '#2a2d3a' },
+          font: '11px JetBrains Mono',
+          label: unit,
+          labelFont: '11px Inter',
+          labelStroke: '#64748b',
+          size: 70,
+        }
+      ],
+      series: [
+        {},
+        {
+          label: label,
+          stroke: '#6366f1',
+          fill: 'rgba(99,102,241,0.06)',
+          width: 2,
+          points: { show: false },
+        }
+      ],
+    };
+  }
+
+  function setRange(r) {
+    currentRange = r;
+    document.querySelectorAll('.time-range-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    fetchMetric();
+  }
+
+  async function onHostChange() {
+    const hostId = document.getElementById('host-select').value;
+    if (!hostId) return;
+    // Load items for selected host
+    try {
+      const resp = await fetch('/api/hosts/' + hostId + '/items');
+      const items = await resp.json();
+      const sel = document.getElementById('item-select');
+      sel.innerHTML = '<option value="">— select item —</option>';
+      items.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.id;
+        opt.textContent = item.name;
+        sel.appendChild(opt);
+      });
+    } catch(e) { console.error('Failed to load items:', e); }
+  }
+
+  async function fetchMetric() {
+    const hostId = document.getElementById('host-select').value;
+    const itemId = document.getElementById('item-select').value;
+    if (!hostId || !itemId) return;
+
+    const overlay = document.getElementById('loading-overlay');
+    overlay.style.display = 'flex';
+
+    try {
+      const resp = await fetch(`/api/metrics?host=${hostId}&item=${itemId}&range=${currentRange}`);
+      if (!resp.ok) throw new Error('API error ' + resp.status);
+      const data = await resp.json();
+
+      // Destroy old chart
+      if (chart) { chart.destroy(); chart = null; }
+      document.getElementById('chart-placeholder').style.display = 'none';
+
+      const wrap = document.getElementById('chart-wrap');
+      const opts = buildChartOpts(wrap.offsetWidth, data.label, data.unit);
+      chart = new uPlot(opts, [data.timestamps, data.values], wrap);
+
+      // Compute stats
+      const vals = data.values.filter(v => v !== null);
+      if (vals.length > 0) {
+        const min = Math.min(...vals), max = Math.max(...vals), avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+        const fmt = v => data.unit ? v.toFixed(2) + ' ' + data.unit : v.toFixed(2);
+        document.getElementById('stat-current').textContent = fmt(vals[vals.length - 1]);
+        document.getElementById('stat-min').textContent     = fmt(min);
+        document.getElementById('stat-max').textContent     = fmt(max);
+        document.getElementById('stat-avg').textContent     = fmt(avg);
+        document.getElementById('stat-points').textContent  = vals.length;
+        document.getElementById('stat-unit').textContent    = data.unit || '';
+        document.getElementById('stats-row').style.display  = 'flex';
+      }
+    } catch(e) {
+      console.error('Failed to load metrics:', e);
+    } finally {
+      overlay.style.display = 'none';
+    }
+  }
+
+  // Resize chart on window resize
+  window.addEventListener('resize', () => {
+    if (chart) {
+      const wrap = document.getElementById('chart-wrap');
+      chart.setSize({ width: wrap.offsetWidth, height: 320 });
+    }
+  });
+
+  // Auto-load if params already set
+  document.addEventListener('DOMContentLoaded', () => {
+    const h = document.getElementById('host-select').value;
+    const i = document.getElementById('item-select').value;
+    if (h && i) fetchMetric();
+  });
+</script>
+{{end}}

@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>lumindash — Design Preview (all 5 views)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --base:    #0f1117;
+      --surface: #1a1d27;
+      --border:  #2a2d3a;
+      --indigo:  #6366f1;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger:  #ef4444;
+      --muted:   #64748b;
+      --primary: #f1f5f9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--base); color: var(--primary); font-family: 'Inter', sans-serif; }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: var(--base); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ─── VIEW SWITCHER ─── */
+    #view-switcher {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      background: rgba(15,17,23,0.95); backdrop-filter: blur(8px);
+      border-bottom: 1px solid #2a2d3a;
+      display: flex; align-items: center; gap: 0;
+      padding: 0 16px;
+    }
+    .view-tab {
+      padding: 10px 18px; font-size: 12px; font-weight: 500; color: #64748b;
+      border: none; background: transparent; cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: all 0.15s; font-family: 'Inter', sans-serif;
+    }
+    .view-tab:hover { color: #94a3b8; }
+    .view-tab.active { color: #818cf8; border-bottom-color: #6366f1; }
+    .view-tab-label {
+      font-size: 11px; font-weight: 700; color: #6366f1;
+      padding: 4px 12px; letter-spacing: 0.08em;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ─── LAYOUT SHELL ─── */
+    .app-shell { display: flex; height: 100vh; padding-top: 41px; }
+
+    /* ─── SIDEBAR ─── */
+    .sidebar {
+      width: 220px; flex-shrink: 0;
+      background: #12151f; border-right: 1px solid #2a2d3a;
+      display: flex; flex-direction: column;
+      position: relative; overflow: hidden;
+    }
+    .sidebar::after {
+      content: ''; position: absolute; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px);
+      pointer-events: none;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px;
+      padding: 18px 20px; border-bottom: 1px solid #2a2d3a;
+      position: relative; z-index: 1;
+    }
+    .logo-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: linear-gradient(135deg, #6366f1, #818cf8);
+      box-shadow: 0 0 16px rgba(99,102,241,0.4);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .logo-text {
+      font-size: 16px; font-weight: 700; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #6366f1, #818cf8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    nav { flex: 1; padding: 12px; position: relative; z-index: 1; }
+    .nav-link {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; border-radius: 8px;
+      font-size: 13px; font-weight: 500; color: #94a3b8;
+      cursor: pointer; transition: all 0.15s; margin-bottom: 2px;
+      border-left: 2px solid transparent; text-decoration: none;
+    }
+    .nav-link:hover { background: rgba(99,102,241,0.1); color: #a5b4fc; }
+    .nav-link.active { background: rgba(99,102,241,0.15); color: #818cf8; border-left-color: #6366f1; }
+    .sidebar-footer {
+      padding: 12px 16px; border-top: 1px solid #2a2d3a;
+      position: relative; z-index: 1;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* ─── MAIN AREA ─── */
+    .main-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* ─── TOPBAR ─── */
+    .topbar {
+      background: #12151f; border-bottom: 1px solid #2a2d3a;
+      flex-shrink: 0; position: relative;
+    }
+    .topbar-line {
+      height: 1px;
+      background: linear-gradient(90deg, #6366f1 0%, #818cf8 40%, transparent 100%);
+    }
+    .topbar-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 24px;
+    }
+    .topbar-title { font-size: 15px; font-weight: 600; color: #f1f5f9; letter-spacing: -0.01em; }
+    .topbar-sub   { font-size: 11px; color: #64748b; margin-top: 1px; }
+    .topbar-right { display: flex; align-items: center; gap: 16px; }
+    .refresh-info { font-size: 11px; color: #64748b; font-family: 'JetBrains Mono', monospace; display: flex; align-items: center; gap: 5px; }
+    .status-pill  { display: flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 9999px; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); }
+    .status-pill span { font-size: 11px; font-weight: 500; color: #4ade80; }
+
+    /* ─── CONTENT ─── */
+    .page-content { flex: 1; overflow-y: auto; padding: 24px; background: #0f1117; }
+    .view-page { display: none; }
+    .view-page.active { display: block; animation: fadeUp 0.2s ease both; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; } }
+
+    /* ─── COMMON COMPONENTS ─── */
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .pulse { animation: pulse 2s ease-in-out infinite; }
+
+    .card { background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 12px; transition: border-color 0.2s, box-shadow 0.2s; }
+    .card:hover { border-color: rgba(99,102,241,0.35); box-shadow: 0 0 0 1px rgba(99,102,241,0.12), 0 4px 24px rgba(99,102,241,0.07); }
+
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+    .badge-disaster { background: rgba(239,68,68,0.18); color: #f87171; border: 1px solid rgba(239,68,68,0.35); }
+    .badge-high     { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.35); }
+    .badge-average  { background: rgba(251,191,36,0.12); color: #fde68a; border: 1px solid rgba(251,191,36,0.3); }
+    .badge-warning  { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.3); }
+    .badge-info     { background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
+    .badge-ok       { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+
+    .num { font-family: 'JetBrains Mono', monospace; }
+    .big-num { font-family: 'JetBrains Mono', monospace; font-size: 32px; font-weight: 600; line-height: 1; letter-spacing: -0.03em; }
+
+    table { border-collapse: collapse; width: 100%; }
+    thead th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; background: rgba(255,255,255,0.02); }
+    tbody td { padding: 11px 16px; border-bottom: 1px solid rgba(42,45,58,0.5); }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:nth-child(even) td { background: rgba(255,255,255,0.013); }
+    tbody tr:hover td { background: rgba(99,102,241,0.055) !important; cursor: pointer; }
+
+    select, input[type=search] {
+      background: #1a1d27; border: 1px solid #2a2d3a; color: #f1f5f9;
+      border-radius: 6px; padding: 6px 28px 6px 10px; font-size: 13px;
+      font-family: 'Inter', sans-serif; appearance: none; cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
+      transition: border-color 0.15s;
+    }
+    select:focus, input[type=search]:focus { outline: none; border-color: #6366f1; }
+
+    input[type=search] { padding-right: 10px; background-image: none; padding-left: 30px; }
+
+    .search-wrap { position: relative; }
+    .search-wrap svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: #64748b; pointer-events: none; }
+
+    /* Toggle */
+    .toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; cursor: pointer; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-track { position: absolute; inset: 0; border-radius: 11px; background: #2a2d3a; transition: background 0.2s; }
+    .toggle-track::after { content: ''; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #64748b; transition: transform 0.2s, background 0.2s; }
+    .toggle-switch input:checked ~ .toggle-track { background: rgba(99,102,241,0.25); }
+    .toggle-switch input:checked ~ .toggle-track::after { transform: translateX(18px); background: #6366f1; }
+
+    /* Page btn */
+    .page-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 6px; border: 1px solid #2a2d3a; background: #1a1d27; color: #64748b; font-size: 12px; font-family: 'JetBrains Mono', monospace; cursor: pointer; text-decoration: none; transition: all 0.15s; }
+    .page-btn:hover { border-color: #6366f1; color: #818cf8; }
+    .page-btn.active { background: rgba(99,102,241,0.2); border-color: #6366f1; color: #818cf8; }
+
+    /* ─── DASHBOARD ─── */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 14px; margin-bottom: 22px; }
+    .stat-card { padding: 16px; border-radius: 12px; }
+    .stat-label { font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
+    .stat-sub   { font-size: 11px; color: #64748b; margin-top: 7px; font-family: 'JetBrains Mono', monospace; }
+
+    .ack-btn { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 5px; font-size: 11px; font-weight: 500; background: rgba(99,102,241,0.12); color: #818cf8; border: 1px solid rgba(99,102,241,0.25); cursor: pointer; transition: all 0.15s; }
+    .ack-btn:hover { background: rgba(99,102,241,0.22); }
+    .ack-done { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 5px; font-size: 11px; color: #4ade80; }
+
+    /* ─── HOSTS ─── */
+    .avail-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .avail-ok  { background: #22c55e; box-shadow: 0 0 5px rgba(34,197,94,0.6); }
+    .avail-err { background: #ef4444; box-shadow: 0 0 5px rgba(239,68,68,0.5); }
+    .avail-unk { background: #64748b; }
+    .status-on  { color: #4ade80; background: rgba(34,197,94,0.1);  border: 1px solid rgba(34,197,94,0.25); border-radius: 9999px; padding: 2px 8px; font-size: 11px; font-weight: 500; }
+    .status-off { color: #94a3b8; background: rgba(100,116,139,0.1); border: 1px solid rgba(100,116,139,0.2); border-radius: 9999px; padding: 2px 8px; font-size: 11px; font-weight: 500; }
+    .group-tag  { padding: 2px 7px; border-radius: 4px; font-size: 11px; color: #94a3b8; background: rgba(255,255,255,0.04); border: 1px solid #2a2d3a; white-space: nowrap; }
+    .prob-count { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; padding: 0 5px; }
+
+    /* ─── METRICS ─── */
+    .time-btn { padding: 5px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; font-family: 'JetBrains Mono', monospace; border: 1px solid #2a2d3a; background: transparent; color: #64748b; cursor: pointer; transition: all 0.15s; }
+    .time-btn:hover { border-color: #6366f1; color: #818cf8; }
+    .time-btn.active { background: rgba(99,102,241,0.2); border-color: #6366f1; color: #818cf8; }
+    .metric-stat-label { font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.07em; }
+    .metric-stat-value { font-size: 20px; font-weight: 600; font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+    .metric-stat-unit  { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+    /* Graph placeholder */
+    .graph-placeholder {
+      height: 320px; border-radius: 8px; position: relative; overflow: hidden;
+      background: #1a1d27; border: 1px solid #2a2d3a;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .graph-placeholder svg.chart-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .graph-placeholder .graph-label { position: relative; z-index: 1; text-align: center; }
+
+    /* ─── EVENTS ─── */
+    .ev-problem  { color: #f87171; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); border-radius: 9999px; padding: 2px 10px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .ev-resolved { color: #4ade80; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); border-radius: 9999px; padding: 2px 10px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .inline-ack { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 5px; font-size: 11px; font-weight: 500; background: rgba(99,102,241,0.1); color: #818cf8; border: 1px solid rgba(99,102,241,0.2); cursor: pointer; transition: all 0.15s; }
+    .inline-ack:hover { background: rgba(99,102,241,0.22); }
+
+    /* ─── CONFIG ─── */
+    .tab-btn { padding: 11px 18px; font-size: 13px; font-weight: 500; color: #64748b; border: none; background: transparent; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+    .tab-btn:hover { color: #94a3b8; }
+    .tab-btn.ctab-active { color: #818cf8; border-bottom-color: #6366f1; }
+    .ctab-panel { display: none; }
+    .ctab-panel.ctab-active { display: block; }
+    .cfg-action-enable  { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 500; background: rgba(34,197,94,0.1); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); cursor: pointer; }
+    .cfg-action-disable { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 500; background: rgba(239,68,68,0.08); color: #f87171; border: 1px solid rgba(239,68,68,0.2); cursor: pointer; }
+    .expr { font-size: 11px; color: #64748b; font-family: 'JetBrains Mono', monospace; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Toast */
+    #toast { position: fixed; bottom: 24px; right: 24px; z-index: 2000; background: #1a1d27; border: 1px solid rgba(34,197,94,0.3); border-radius: 8px; padding: 10px 16px; font-size: 13px; color: #f1f5f9; box-shadow: 0 8px 32px rgba(0,0,0,0.4); transform: translateY(80px); opacity: 0; transition: transform 0.25s, opacity 0.25s; display: flex; align-items: center; gap: 8px; }
+    #toast.show { transform: translateY(0); opacity: 1; }
+  </style>
+</head>
+<body>
+
+<!-- ─── VIEW SWITCHER ─── -->
+<div id="view-switcher">
+  <span class="view-tab-label">lumindash</span>
+  <button class="view-tab active" onclick="switchView('dashboard', this)">Dashboard</button>
+  <button class="view-tab" onclick="switchView('hosts', this)">Hosts</button>
+  <button class="view-tab" onclick="switchView('metrics', this)">Metrics</button>
+  <button class="view-tab" onclick="switchView('events', this)">Events</button>
+  <button class="view-tab" onclick="switchView('config', this)">Config</button>
+</div>
+
+<!-- ─── APP SHELL ─── -->
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <span class="logo-text">lumindash</span>
+    </div>
+    <nav>
+      <a class="nav-link active" id="snav-dashboard" onclick="switchView('dashboard',null,this)" href="#">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a class="nav-link" id="snav-hosts" onclick="switchView('hosts',null,this)" href="#">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+        Hosts
+      </a>
+      <a class="nav-link" id="snav-metrics" onclick="switchView('metrics',null,this)" href="#">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Metrics
+      </a>
+      <a class="nav-link" id="snav-events" onclick="switchView('events',null,this)" href="#">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Events
+      </a>
+      <a class="nav-link" id="snav-config" onclick="switchView('config',null,this)" href="#">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        Config
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="pulse" style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;flex-shrink:0;"></div>
+      <span style="font-size:11px;color:#64748b;font-family:'JetBrains Mono',monospace;">DB Connected</span>
+    </div>
+  </aside>
+
+  <!-- MAIN AREA -->
+  <div class="main-area">
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="topbar-line"></div>
+      <div class="topbar-inner">
+        <div>
+          <div class="topbar-title" id="topbar-title">Dashboard</div>
+          <div class="topbar-sub" id="topbar-sub">System overview &amp; active problems</div>
+        </div>
+        <div class="topbar-right">
+          <div class="refresh-info">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            refreshed <span id="refresh-time" style="color:#818cf8;">just now</span>
+          </div>
+          <div class="status-pill">
+            <div class="pulse" style="width:6px;height:6px;border-radius:50%;background:#22c55e;"></div>
+            <span>Connected</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE CONTENT -->
+    <div class="page-content">
+
+      <!-- ══════════════════ DASHBOARD ══════════════════ -->
+      <div id="view-dashboard" class="view-page active">
+        <!-- Stat cards -->
+        <div class="stat-grid">
+          <div class="card stat-card" style="border-top:3px solid #2a2d3a;">
+            <div class="stat-label">Total Hosts</div>
+            <div class="big-num" style="color:#f1f5f9;">247</div>
+            <div class="stat-sub"><span style="color:#22c55e;">231</span> enabled</div>
+          </div>
+          <div class="card stat-card" style="border-top:3px solid #f59e0b;">
+            <div class="stat-label">With Problems</div>
+            <div class="big-num" style="color:#fbbf24;">18</div>
+            <div class="stat-sub">hosts affected</div>
+          </div>
+          <div class="card stat-card" style="border-top:3px solid #2a2d3a;">
+            <div class="stat-label">Active Triggers</div>
+            <div class="big-num" style="color:#f1f5f9;">43</div>
+            <div class="stat-sub">firing now</div>
+          </div>
+          <div class="card stat-card" style="border-top:3px solid #ef4444;">
+            <div class="stat-label">Disaster</div>
+            <div class="big-num" style="color:#f87171;">2</div>
+            <div class="stat-sub">severity 5</div>
+          </div>
+          <div class="card stat-card" style="border-top:3px solid #f59e0b;">
+            <div class="stat-label">High</div>
+            <div class="big-num" style="color:#fbbf24;">7</div>
+            <div class="stat-sub">severity 4</div>
+          </div>
+          <div class="card stat-card" style="border-top:3px solid #fde68a;">
+            <div class="stat-label">Average</div>
+            <div class="big-num" style="color:#fde68a;">14</div>
+            <div class="stat-sub">severity 3</div>
+          </div>
+          <div class="card stat-card" style="border-top:3px solid #6366f1;">
+            <div class="stat-label">Warning</div>
+            <div class="big-num" style="color:#a5b4fc;">12</div>
+            <div class="stat-sub">severity 2</div>
+          </div>
+          <div class="card stat-card" style="border-top:3px solid #64748b;">
+            <div class="stat-label">Info</div>
+            <div class="big-num" style="color:#94a3b8;">8</div>
+            <div class="stat-sub">severity 1</div>
+          </div>
+        </div>
+
+        <!-- Problems table -->
+        <div class="card" style="border-radius:12px; overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid #2a2d3a;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:8px;height:8px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;"></div>
+              <span style="font-size:13px;font-weight:600;color:#f1f5f9;">Active Problems</span>
+              <span class="num" style="font-size:12px;color:#64748b;background:rgba(255,255,255,0.04);border:1px solid #2a2d3a;border-radius:9999px;padding:1px 8px;">43</span>
+            </div>
+            <div style="font-size:11px;color:#64748b;font-family:'JetBrains Mono',monospace;">
+              auto-refresh in <span style="color:#818cf8;" id="cntdwn">30s</span>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr>
+                <th>Host</th><th>Trigger</th><th>Severity</th><th>Duration</th><th>Ack</th>
+              </tr></thead>
+              <tbody>
+                <tr style="border-left:3px solid #ef4444;">
+                  <td><div style="font-size:13px;font-weight:500;color:#f1f5f9;">db-prod-01</div><div style="font-size:11px;color:#64748b;font-family:'JetBrains Mono',monospace;margin-top:1px;">10.0.1.5</div></td>
+                  <td><div style="font-size:13px;color:#e2e8f0;">Disk space critically low on /var (98%)</div></td>
+                  <td><span class="badge badge-disaster">Disaster</span></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#64748b;">2h 14m</span></td>
+                  <td><button class="ack-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Ack</button></td>
+                </tr>
+                <tr style="border-left:3px solid #ef4444;">
+                  <td><div style="font-size:13px;font-weight:500;color:#f1f5f9;">api-gateway-02</div><div style="font-size:11px;color:#64748b;font-family:'JetBrains Mono',monospace;">10.0.2.12</div></td>
+                  <td><div style="font-size:13px;color:#e2e8f0;">Zabbix agent unreachable for 5 minutes</div></td>
+                  <td><span class="badge badge-disaster">Disaster</span></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#64748b;">47m</span></td>
+                  <td><span class="ack-done"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Acked</span></td>
+                </tr>
+                <tr style="border-left:3px solid #f59e0b;">
+                  <td><div style="font-size:13px;font-weight:500;color:#f1f5f9;">web-lb-03</div><div style="font-size:11px;color:#64748b;font-family:'JetBrains Mono',monospace;">10.0.3.8</div></td>
+                  <td><div style="font-size:13px;color:#e2e8f0;">CPU utilization above 85% for 10 minutes</div></td>
+                  <td><span class="badge badge-high">High</span></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#64748b;">31m</span></td>
+                  <td><button class="ack-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Ack</button></td>
+                </tr>
+                <tr style="border-left:3px solid #f59e0b;">
+                  <td><div style="font-size:13px;font-weight:500;color:#f1f5f9;">cache-redis-01</div><div style="font-size:11px;color:#64748b;font-family:'JetBrains Mono',monospace;">10.0.4.20</div></td>
+                  <td><div style="font-size:13px;color:#e2e8f0;">Memory usage exceeds 90% threshold</div></td>
+                  <td><span class="badge badge-high">High</span></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#64748b;">1h 03m</span></td>
+                  <td><button class="ack-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Ack</button></td>
+                </tr>
+                <tr style="border-left:3px solid #fde68a;">
+                  <td><div style="font-size:13px;font-weight:500;color:#f1f5f9;">worker-node-07</div><div style="font-size:11px;color:#64748b;font-family:'JetBrains Mono',monospace;">10.0.5.77</div></td>
+                  <td><div style="font-size:13px;color:#e2e8f0;">Load average above 4.0 (15min avg)</div></td>
+                  <td><span class="badge badge-average">Average</span></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#64748b;">19m</span></td>
+                  <td><button class="ack-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Ack</button></td>
+                </tr>
+                <tr style="border-left:3px solid #6366f1;">
+                  <td><div style="font-size:13px;font-weight:500;color:#f1f5f9;">backup-srv-02</div><div style="font-size:11px;color:#64748b;font-family:'JetBrains Mono',monospace;">10.0.6.14</div></td>
+                  <td><div style="font-size:13px;color:#e2e8f0;">Scheduled backup job did not complete</div></td>
+                  <td><span class="badge badge-warning">Warning</span></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#64748b;">6h 22m</span></td>
+                  <td><span class="ack-done"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Acked</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /dashboard -->
+
+      <!-- ══════════════════ HOSTS ══════════════════ -->
+      <div id="view-hosts" class="view-page">
+        <div class="card" style="border-radius:12px; overflow:hidden;">
+          <!-- Filter bar -->
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #2a2d3a;background:rgba(255,255,255,0.01);flex-wrap:wrap;">
+            <div class="search-wrap">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="search" placeholder="Search hosts…" style="width:220px;" />
+            </div>
+            <select><option>All Groups</option><option>Linux Servers</option><option>Databases</option><option>Load Balancers</option><option>Caches</option></select>
+            <select><option>All Status</option><option>Enabled</option><option>Disabled</option></select>
+            <div style="margin-left:auto;font-size:12px;color:#64748b;font-family:'JetBrains Mono',monospace;">247 hosts</div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr>
+                <th>Hostname</th><th>IP Address</th><th>Groups</th><th>Status</th><th>Agent</th><th>Problems</th>
+              </tr></thead>
+              <tbody>
+                <tr><td><div style="font-size:13px;font-weight:500;color:#f1f5f9;">db-prod-01</div><div style="font-size:11px;color:#64748b;">Primary PostgreSQL</div></td><td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#94a3b8;">10.0.1.5</span></td><td><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="group-tag">Databases</span><span class="group-tag">Production</span></div></td><td><span class="status-on">Enabled</span></td><td><div style="display:flex;align-items:center;gap:6px;"><div class="avail-dot avail-ok"></div><span style="font-size:12px;color:#4ade80;">OK</span></div></td><td><span class="prob-count" style="background:rgba(239,68,68,0.12);color:#f87171;">3</span></td></tr>
+                <tr><td><div style="font-size:13px;font-weight:500;color:#f1f5f9;">api-gateway-02</div></td><td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#94a3b8;">10.0.2.12</span></td><td><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="group-tag">API</span></div></td><td><span class="status-on">Enabled</span></td><td><div style="display:flex;align-items:center;gap:6px;"><div class="avail-dot avail-err"></div><span style="font-size:12px;color:#f87171;">Error</span></div></td><td><span class="prob-count" style="background:rgba(245,158,11,0.12);color:#fbbf24;">2</span></td></tr>
+                <tr><td><div style="font-size:13px;font-weight:500;color:#f1f5f9;">web-lb-03</div></td><td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#94a3b8;">10.0.3.8</span></td><td><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="group-tag">Load Balancers</span></div></td><td><span class="status-on">Enabled</span></td><td><div style="display:flex;align-items:center;gap:6px;"><div class="avail-dot avail-ok"></div><span style="font-size:12px;color:#4ade80;">OK</span></div></td><td><span class="prob-count" style="background:rgba(245,158,11,0.12);color:#fbbf24;">1</span></td></tr>
+                <tr><td><div style="font-size:13px;font-weight:500;color:#f1f5f9;">cache-redis-01</div></td><td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#94a3b8;">10.0.4.20</span></td><td><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="group-tag">Caches</span></div></td><td><span class="status-on">Enabled</span></td><td><div style="display:flex;align-items:center;gap:6px;"><div class="avail-dot avail-ok"></div><span style="font-size:12px;color:#4ade80;">OK</span></div></td><td><span class="prob-count" style="background:rgba(245,158,11,0.12);color:#fbbf24;">1</span></td></tr>
+                <tr><td><div style="font-size:13px;font-weight:500;color:#f1f5f9;">worker-node-07</div></td><td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#94a3b8;">10.0.5.77</span></td><td><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="group-tag">Workers</span><span class="group-tag">Production</span></div></td><td><span class="status-on">Enabled</span></td><td><div style="display:flex;align-items:center;gap:6px;"><div class="avail-dot avail-ok"></div><span style="font-size:12px;color:#4ade80;">OK</span></div></td><td><span class="prob-count" style="background:rgba(34,197,94,0.12);color:#4ade80;">1</span></td></tr>
+                <tr><td><div style="font-size:13px;font-weight:500;color:#f1f5f9;">backup-srv-02</div></td><td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#94a3b8;">10.0.6.14</span></td><td><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="group-tag">Backup</span></div></td><td><span class="status-on">Enabled</span></td><td><div style="display:flex;align-items:center;gap:6px;"><div class="avail-dot avail-ok"></div><span style="font-size:12px;color:#4ade80;">OK</span></div></td><td><span class="prob-count" style="background:rgba(34,197,94,0.12);color:#4ade80;">1</span></td></tr>
+                <tr><td><div style="font-size:13px;font-weight:500;color:#f1f5f9;">staging-app-01</div></td><td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#94a3b8;">10.0.9.3</span></td><td><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="group-tag">Staging</span></div></td><td><span class="status-off">Disabled</span></td><td><div style="display:flex;align-items:center;gap:6px;"><div class="avail-dot avail-unk"></div><span style="font-size:12px;color:#64748b;">Unknown</span></div></td><td><span class="prob-count" style="color:#64748b;">—</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /hosts -->
+
+      <!-- ══════════════════ METRICS ══════════════════ -->
+      <div id="view-metrics" class="view-page">
+        <div class="card" style="border-radius:12px; overflow:hidden;">
+          <!-- Selectors -->
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid #2a2d3a;">
+            <span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;">Host</span>
+            <select style="min-width:200px;"><option>db-prod-01</option><option>api-gateway-02</option><option>web-lb-03</option></select>
+            <span style="font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;">Item</span>
+            <select style="min-width:220px;"><option>CPU utilization</option><option>Memory used %</option><option>Disk read/write</option></select>
+            <div style="display:flex;gap:6px;margin-left:auto;">
+              <button class="time-btn">1h</button>
+              <button class="time-btn active">6h</button>
+              <button class="time-btn">24h</button>
+              <button class="time-btn">7d</button>
+              <button class="time-btn">30d</button>
+            </div>
+          </div>
+
+          <!-- Stats row -->
+          <div style="display:flex;border-bottom:1px solid #2a2d3a;">
+            <div style="padding:14px 18px;border-right:1px solid #2a2d3a;min-width:110px;">
+              <div class="metric-stat-label">Current</div>
+              <div class="metric-stat-value" style="color:#818cf8;">67.4</div>
+              <div class="metric-stat-unit">%</div>
+            </div>
+            <div style="padding:14px 18px;border-right:1px solid #2a2d3a;min-width:110px;">
+              <div class="metric-stat-label">Min</div>
+              <div class="metric-stat-value" style="color:#22c55e;">12.1</div>
+              <div class="metric-stat-unit">in range</div>
+            </div>
+            <div style="padding:14px 18px;border-right:1px solid #2a2d3a;min-width:110px;">
+              <div class="metric-stat-label">Max</div>
+              <div class="metric-stat-value" style="color:#f87171;">91.3</div>
+              <div class="metric-stat-unit">in range</div>
+            </div>
+            <div style="padding:14px 18px;border-right:1px solid #2a2d3a;min-width:110px;">
+              <div class="metric-stat-label">Avg</div>
+              <div class="metric-stat-value" style="color:#a5b4fc;">48.7</div>
+              <div class="metric-stat-unit">in range</div>
+            </div>
+            <div style="padding:14px 18px;min-width:110px;">
+              <div class="metric-stat-label">Points</div>
+              <div class="metric-stat-value" style="color:#64748b;font-size:18px;">2,160</div>
+              <div class="metric-stat-unit">samples</div>
+            </div>
+          </div>
+
+          <!-- Graph area -->
+          <div style="padding:20px;">
+            <div class="graph-placeholder">
+              <svg class="chart-svg" viewBox="0 0 800 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Grid lines -->
+                <line x1="0" y1="64"  x2="800" y2="64"  stroke="#2a2d3a" stroke-width="1"/>
+                <line x1="0" y1="128" x2="800" y2="128" stroke="#2a2d3a" stroke-width="1"/>
+                <line x1="0" y1="192" x2="800" y2="192" stroke="#2a2d3a" stroke-width="1"/>
+                <line x1="0" y1="256" x2="800" y2="256" stroke="#2a2d3a" stroke-width="1"/>
+                <line x1="133" y1="0" x2="133" y2="320" stroke="#2a2d3a" stroke-width="1"/>
+                <line x1="267" y1="0" x2="267" y2="320" stroke="#2a2d3a" stroke-width="1"/>
+                <line x1="400" y1="0" x2="400" y2="320" stroke="#2a2d3a" stroke-width="1"/>
+                <line x1="533" y1="0" x2="533" y2="320" stroke="#2a2d3a" stroke-width="1"/>
+                <line x1="667" y1="0" x2="667" y2="320" stroke="#2a2d3a" stroke-width="1"/>
+                <!-- Fill area -->
+                <path d="M0,220 C40,210 80,200 120,190 C160,175 200,170 240,160 C280,148 320,155 360,140 C400,120 440,100 480,95 C520,88 560,100 600,108 C640,118 680,130 720,120 C760,110 780,90 800,85 L800,320 L0,320 Z"
+                  fill="url(#grad)" opacity="0.12"/>
+                <!-- Line -->
+                <path d="M0,220 C40,210 80,200 120,190 C160,175 200,170 240,160 C280,148 320,155 360,140 C400,120 440,100 480,95 C520,88 560,100 600,108 C640,118 680,130 720,120 C760,110 780,90 800,85"
+                  fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round"/>
+                <defs>
+                  <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#6366f1"/>
+                    <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <!-- Y axis labels -->
+                <text x="8" y="68" fill="#64748b" font-size="10" font-family="JetBrains Mono, monospace">100</text>
+                <text x="8" y="132" fill="#64748b" font-size="10" font-family="JetBrains Mono, monospace">75</text>
+                <text x="8" y="196" fill="#64748b" font-size="10" font-family="JetBrains Mono, monospace">50</text>
+                <text x="8" y="260" fill="#64748b" font-size="10" font-family="JetBrains Mono, monospace">25</text>
+                <!-- X axis labels -->
+                <text x="90"  y="312" fill="#64748b" font-size="10" font-family="JetBrains Mono, monospace">-6h</text>
+                <text x="220" y="312" fill="#64748b" font-size="10" font-family="JetBrains Mono, monospace">-4h</text>
+                <text x="355" y="312" fill="#64748b" font-size="10" font-family="JetBrains Mono, monospace">-3h</text>
+                <text x="488" y="312" fill="#64748b" font-size="10" font-family="JetBrains Mono, monospace">-2h</text>
+                <text x="620" y="312" fill="#64748b" font-size="10" font-family="JetBrains Mono, monospace">-1h</text>
+                <text x="760" y="312" fill="#64748b" font-size="10" font-family="JetBrains Mono, monospace">now</text>
+                <!-- Cursor line (hover indicator) -->
+                <line x1="600" y1="0" x2="600" y2="300" stroke="#6366f1" stroke-width="1" stroke-dasharray="4 3" opacity="0.4"/>
+                <circle cx="600" cy="108" r="4" fill="#6366f1" stroke="#1a1d27" stroke-width="2"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div><!-- /metrics -->
+
+      <!-- ══════════════════ EVENTS ══════════════════ -->
+      <div id="view-events" class="view-page">
+        <div class="card" style="border-radius:12px;overflow:hidden;">
+          <!-- Filter row -->
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid #2a2d3a;background:rgba(255,255,255,0.01);">
+            <select><option>All Severities</option><option>Disaster</option><option>High</option></select>
+            <select><option>All Hosts</option><option>db-prod-01</option><option>api-gateway-02</option></select>
+            <select><option>Last 24 hours</option><option>Last 1 hour</option><option>Last 7 days</option></select>
+            <select><option>All Status</option><option selected>Problem</option><option>Resolved</option></select>
+            <div style="margin-left:auto;font-size:12px;color:#64748b;font-family:'JetBrains Mono',monospace;">1,284 events</div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr>
+                <th>Time</th><th>Host</th><th>Trigger</th><th>Severity</th><th>Status</th><th>Duration</th><th>Ack</th><th></th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#94a3b8;">14:32:07</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748b;">2026-04-15</div></td>
+                  <td><span style="font-size:13px;font-weight:500;color:#818cf8;">db-prod-01</span></td>
+                  <td><div style="font-size:12px;color:#e2e8f0;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Disk space critically low on /var (98%)</div></td>
+                  <td><span class="badge badge-disaster">Disaster</span></td>
+                  <td><span class="ev-problem">PROBLEM</span></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#64748b;">2h 14m</span></td>
+                  <td><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#94a3b8;">13:45:12</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748b;">2026-04-15</div></td>
+                  <td><span style="font-size:13px;font-weight:500;color:#818cf8;">api-gateway-02</span></td>
+                  <td><div style="font-size:12px;color:#e2e8f0;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Zabbix agent unreachable for 5 minutes</div></td>
+                  <td><span class="badge badge-disaster">Disaster</span></td>
+                  <td><span class="ev-problem">PROBLEM</span></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#64748b;">47m</span></td>
+                  <td><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2a2d3a" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></td>
+                  <td><button class="inline-ack"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Ack</button></td>
+                </tr>
+                <tr>
+                  <td><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#94a3b8;">12:11:39</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748b;">2026-04-15</div></td>
+                  <td><span style="font-size:13px;font-weight:500;color:#818cf8;">web-lb-03</span></td>
+                  <td><div style="font-size:12px;color:#e2e8f0;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">CPU utilization above 85% for 10 minutes</div></td>
+                  <td><span class="badge badge-high">High</span></td>
+                  <td><span class="ev-problem">PROBLEM</span></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#64748b;">31m</span></td>
+                  <td><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2a2d3a" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></td>
+                  <td><button class="inline-ack"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Ack</button></td>
+                </tr>
+                <tr>
+                  <td><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#94a3b8;">10:08:54</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748b;">2026-04-15</div></td>
+                  <td><span style="font-size:13px;font-weight:500;color:#818cf8;">cache-redis-01</span></td>
+                  <td><div style="font-size:12px;color:#e2e8f0;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Memory usage exceeds 90% threshold</div></td>
+                  <td><span class="badge badge-high">High</span></td>
+                  <td><span class="ev-resolved">RESOLVED</span></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#64748b;">22m</span></td>
+                  <td><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#94a3b8;">08:23:01</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#64748b;">2026-04-15</div></td>
+                  <td><span style="font-size:13px;font-weight:500;color:#818cf8;">worker-node-07</span></td>
+                  <td><div style="font-size:12px;color:#e2e8f0;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Load average above 4.0 (15min avg)</div></td>
+                  <td><span class="badge badge-average">Average</span></td>
+                  <td><span class="ev-problem">PROBLEM</span></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#64748b;">19m</span></td>
+                  <td><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2a2d3a" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></td>
+                  <td><button class="inline-ack"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Ack</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- Pagination -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-top:1px solid #2a2d3a;">
+            <div style="font-size:12px;color:#64748b;font-family:'JetBrains Mono',monospace;">Page 1 of 86 · 1,284 events</div>
+            <div style="display:flex;gap:4px;">
+              <span class="page-btn">‹</span>
+              <span class="page-btn active">1</span>
+              <span class="page-btn">2</span>
+              <span class="page-btn">3</span>
+              <span style="font-size:12px;color:#64748b;padding:0 4px;align-self:center;">…</span>
+              <span class="page-btn">86</span>
+              <span class="page-btn">›</span>
+            </div>
+          </div>
+        </div>
+      </div><!-- /events -->
+
+      <!-- ══════════════════ CONFIG ══════════════════ -->
+      <div id="view-config" class="view-page">
+        <div class="card" style="border-radius:12px;overflow:hidden;">
+          <!-- Tabs -->
+          <div style="display:flex;border-bottom:1px solid #2a2d3a;padding:0 16px;background:rgba(255,255,255,0.01);">
+            <button class="tab-btn ctab-active" id="ctab-hosts-btn" onclick="switchCfgTab('hosts')">
+              <span style="display:flex;align-items:center;gap:6px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+                Hosts
+                <span class="num" style="font-size:11px;color:#64748b;background:rgba(255,255,255,0.04);border:1px solid #2a2d3a;border-radius:9999px;padding:1px 7px;">247</span>
+              </span>
+            </button>
+            <button class="tab-btn" id="ctab-triggers-btn" onclick="switchCfgTab('triggers')">
+              <span style="display:flex;align-items:center;gap:6px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                Triggers
+                <span class="num" style="font-size:11px;color:#64748b;background:rgba(255,255,255,0.04);border:1px solid #2a2d3a;border-radius:9999px;padding:1px 7px;">1,432</span>
+              </span>
+            </button>
+          </div>
+
+          <!-- Hosts tab panel -->
+          <div id="ctab-hosts" class="ctab-panel ctab-active" style="overflow-x:auto;">
+            <table>
+              <thead><tr>
+                <th>Hostname</th><th>IP Address</th><th>Groups</th><th>Templates</th><th>Status</th><th>Action</th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td><div style="font-size:13px;font-weight:500;color:#f1f5f9;">db-prod-01</div><div style="font-size:11px;color:#64748b;">Primary PostgreSQL</div></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#94a3b8;">10.0.1.5</span></td>
+                  <td><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="group-tag">Databases</span><span class="group-tag">Production</span></div></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#64748b;">3 templates</span></td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <label class="toggle-switch">
+                        <input type="checkbox" checked>
+                        <span class="toggle-track"></span>
+                      </label>
+                      <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:#4ade80;">Enabled</span>
+                    </div>
+                  </td>
+                  <td><button class="cfg-action-disable"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> Disable</button></td>
+                </tr>
+                <tr>
+                  <td><div style="font-size:13px;font-weight:500;color:#f1f5f9;">api-gateway-02</div></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#94a3b8;">10.0.2.12</span></td>
+                  <td><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="group-tag">API</span></div></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#64748b;">2 templates</span></td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <label class="toggle-switch">
+                        <input type="checkbox" checked>
+                        <span class="toggle-track"></span>
+                      </label>
+                      <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:#4ade80;">Enabled</span>
+                    </div>
+                  </td>
+                  <td><button class="cfg-action-disable"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> Disable</button></td>
+                </tr>
+                <tr>
+                  <td><div style="font-size:13px;font-weight:500;color:#f1f5f9;">staging-app-01</div></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#94a3b8;">10.0.9.3</span></td>
+                  <td><div style="display:flex;flex-wrap:wrap;gap:4px;"><span class="group-tag">Staging</span></div></td>
+                  <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#64748b;">2 templates</span></td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="toggle-track"></span>
+                      </label>
+                      <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:#64748b;">Disabled</span>
+                    </div>
+                  </td>
+                  <td><button class="cfg-action-enable"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Enable</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Triggers tab panel -->
+          <div id="ctab-triggers" class="ctab-panel" style="overflow-x:auto;">
+            <table>
+              <thead><tr>
+                <th>Trigger</th><th>Host</th><th>Severity</th><th>Expression</th><th>Status</th><th>Action</th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td><div style="font-size:12px;color:#e2e8f0;font-family:'JetBrains Mono',monospace;">Disk space critically low on /var</div></td>
+                  <td><span style="font-size:12px;color:#818cf8;font-family:'JetBrains Mono',monospace;">db-prod-01</span></td>
+                  <td><span class="badge badge-disaster">Disaster</span></td>
+                  <td><div class="expr">{db-prod-01:vfs.fs.size[/var,pfree].last()}&lt;2</div></td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <label class="toggle-switch">
+                        <input type="checkbox" checked>
+                        <span class="toggle-track"></span>
+                      </label>
+                      <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:#4ade80;">Enabled</span>
+                    </div>
+                  </td>
+                  <td><button class="cfg-action-disable"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> Disable</button></td>
+                </tr>
+                <tr>
+                  <td><div style="font-size:12px;color:#e2e8f0;font-family:'JetBrains Mono',monospace;">CPU utilization above 85%</div></td>
+                  <td><span style="font-size:12px;color:#818cf8;font-family:'JetBrains Mono',monospace;">web-lb-03</span></td>
+                  <td><span class="badge badge-high">High</span></td>
+                  <td><div class="expr">{web-lb-03:system.cpu.util.avg(10m)}&gt;85</div></td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <label class="toggle-switch">
+                        <input type="checkbox" checked>
+                        <span class="toggle-track"></span>
+                      </label>
+                      <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:#4ade80;">Enabled</span>
+                    </div>
+                  </td>
+                  <td><button class="cfg-action-disable"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> Disable</button></td>
+                </tr>
+                <tr>
+                  <td><div style="font-size:12px;color:#e2e8f0;font-family:'JetBrains Mono',monospace;">Scheduled backup did not complete</div></td>
+                  <td><span style="font-size:12px;color:#818cf8;font-family:'JetBrains Mono',monospace;">backup-srv-02</span></td>
+                  <td><span class="badge badge-warning">Warning</span></td>
+                  <td><div class="expr">{backup-srv-02:log[backup.log,ERROR].nodata(3600)}</div></td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="toggle-track"></span>
+                      </label>
+                      <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:#64748b;">Disabled</span>
+                    </div>
+                  </td>
+                  <td><button class="cfg-action-enable"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Enable</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /config -->
+
+    </div><!-- /page-content -->
+  </div><!-- /main-area -->
+</div><!-- /app-shell -->
+
+<!-- Toast -->
+<div id="toast">
+  <span id="toast-icon" style="color:#22c55e;">✓</span>
+  <span id="toast-msg">Done</span>
+</div>
+
+<script>
+  const titles = {
+    dashboard: ['Dashboard', 'System overview & active problems'],
+    hosts:     ['Hosts', 'All monitored hosts'],
+    metrics:   ['Metrics', 'Time-series graphs'],
+    events:    ['Events', 'Alert history & acknowledgements'],
+    config:    ['Config', 'Host & trigger management'],
+  };
+
+  function switchView(name, tabBtn, sideBtn) {
+    // Hide all views
+    document.querySelectorAll('.view-page').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+
+    // Update top switcher tabs
+    document.querySelectorAll('#view-switcher .view-tab').forEach(b => b.classList.remove('active'));
+    if (tabBtn) tabBtn.classList.add('active');
+    else {
+      document.querySelectorAll('#view-switcher .view-tab').forEach(b => {
+        if (b.textContent.trim().toLowerCase() === name) b.classList.add('active');
+      });
+    }
+
+    // Update sidebar
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    const sn = document.getElementById('snav-' + name);
+    if (sn) sn.classList.add('active');
+
+    // Update topbar
+    const t = titles[name] || [name, ''];
+    document.getElementById('topbar-title').textContent = t[0];
+    document.getElementById('topbar-sub').textContent = t[1];
+  }
+
+  function switchCfgTab(name) {
+    document.querySelectorAll('.ctab-panel').forEach(p => p.classList.remove('ctab-active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('ctab-active'));
+    document.getElementById('ctab-' + name).classList.add('ctab-active');
+    document.getElementById('ctab-' + name + '-btn').classList.add('ctab-active');
+  }
+
+  // Countdown
+  let s = 30;
+  setInterval(() => { s--; if (s <= 0) s = 30; const el = document.getElementById('cntdwn'); if (el) el.textContent = s + 's'; }, 1000);
+
+  // Time buttons in metrics (visual only in preview)
+  document.querySelectorAll('.time-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

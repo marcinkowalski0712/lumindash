@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{.Title}} — lumindash</title>
+  {{if .AutoRefresh}}
+  <meta http-equiv="refresh" content="30" />
+  {{end}}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            base:    '#0f1117',
+            surface: '#1a1d27',
+            border:  '#2a2d3a',
+            indigo:  { DEFAULT: '#6366f1', hover: '#818cf8' },
+            success: '#22c55e',
+            warning: '#f59e0b',
+            danger:  '#ef4444',
+            muted:   '#64748b',
+            primary: '#f1f5f9',
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    :root {
+      --base:    #0f1117;
+      --surface: #1a1d27;
+      --border:  #2a2d3a;
+      --indigo:  #6366f1;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger:  #ef4444;
+      --muted:   #64748b;
+      --primary: #f1f5f9;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; margin: 0; background: var(--base); color: var(--primary); font-family: 'Inter', sans-serif; }
+
+    /* Sidebar scanline texture */
+    .sidebar-scanlines::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.06) 2px,
+        rgba(0,0,0,0.06) 4px
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: var(--base); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    /* Card glow on hover */
+    .card-hover {
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .card-hover:hover {
+      border-color: rgba(99,102,241,0.4) !important;
+      box-shadow: 0 0 0 1px rgba(99,102,241,0.15), 0 4px 24px rgba(99,102,241,0.08);
+    }
+
+    /* Table row hover */
+    .table-row-hover:hover {
+      background: rgba(99,102,241,0.06) !important;
+      cursor: pointer;
+    }
+
+    /* Zebra striping */
+    .zebra tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
+
+    /* Nav active state */
+    .nav-link { transition: background 0.15s, color 0.15s; }
+    .nav-link:hover { background: rgba(99,102,241,0.12); color: #818cf8; }
+    .nav-link.active {
+      background: rgba(99,102,241,0.18);
+      color: #818cf8;
+      border-left: 2px solid #6366f1;
+    }
+
+    /* Status pulse */
+    @keyframes pulse-green {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .pulse { animation: pulse-green 2s ease-in-out infinite; }
+
+    /* Severity badges */
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap; }
+    .badge-disaster { background: rgba(239,68,68,0.18); color: #f87171; border: 1px solid rgba(239,68,68,0.35); }
+    .badge-high     { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.35); }
+    .badge-average  { background: rgba(251,191,36,0.12); color: #fde68a; border: 1px solid rgba(251,191,36,0.3); }
+    .badge-warning  { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.3); }
+    .badge-info     { background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
+    .badge-ok       { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+
+    /* Number display (mono) */
+    .num { font-family: 'JetBrains Mono', monospace; }
+
+    /* Topbar gradient line */
+    .topbar-accent {
+      background: linear-gradient(90deg, #6366f1 0%, #818cf8 40%, transparent 100%);
+      height: 1px;
+    }
+
+    /* Logo mark */
+    .logo-mark {
+      background: linear-gradient(135deg, #6366f1, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Dropdown */
+    select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--primary);
+      border-radius: 6px;
+      padding: 6px 28px 6px 10px;
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    select:focus { outline: none; border-color: var(--indigo); }
+
+    /* Input */
+    input[type=text], input[type=search] {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--primary);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      transition: border-color 0.15s;
+    }
+    input[type=text]:focus, input[type=search]:focus { outline: none; border-color: var(--indigo); }
+    input::placeholder { color: var(--muted); }
+
+    /* Toggle switch */
+    .toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute; inset: 0; border-radius: 11px;
+      background: #2a2d3a; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-track::after {
+      content: ''; position: absolute;
+      left: 3px; top: 3px;
+      width: 16px; height: 16px;
+      border-radius: 50%; background: #64748b;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .toggle-switch input:checked + .toggle-track { background: rgba(99,102,241,0.3); }
+    .toggle-switch input:checked + .toggle-track::after { transform: translateX(18px); background: #6366f1; }
+
+    /* Pagination */
+    .page-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--muted); font-size: 12px; font-family: 'JetBrains Mono', monospace;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .page-btn:hover { border-color: var(--indigo); color: #818cf8; }
+    .page-btn.active { background: rgba(99,102,241,0.2); border-color: var(--indigo); color: #818cf8; }
+
+    /* Responsive sidebar */
+    @media (max-width: 768px) {
+      #sidebar { transform: translateX(-100%); transition: transform 0.25s ease; }
+      #sidebar.open { transform: translateX(0); }
+      #main-content { margin-left: 0 !important; }
+    }
+
+    /* Stat card accent bar */
+    .stat-card-bar { height: 3px; border-radius: 0 0 0 0; }
+
+    /* Focus ring for buttons */
+    button:focus { outline: none; }
+    button:focus-visible { box-shadow: 0 0 0 2px rgba(99,102,241,0.6); }
+  </style>
+  {{block "head" .}}{{end}}
+</head>
+<body class="h-full flex overflow-hidden" style="background:#0f1117;">
+
+  <!-- Mobile overlay -->
+  <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-20 hidden md:hidden" onclick="closeSidebar()"></div>
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar-scanlines relative flex-shrink-0 z-30 flex flex-col"
+    style="width:220px; background:#12151f; border-right:1px solid #2a2d3a; min-height:100vh; position:fixed; top:0; left:0; bottom:0; overflow-y:auto;">
+
+    <!-- Logo -->
+    <div class="flex items-center gap-2 px-5 py-5" style="border-bottom:1px solid #2a2d3a; position:relative; z-index:1;">
+      <div class="flex items-center justify-center rounded-lg" style="width:32px;height:32px;background:linear-gradient(135deg,#6366f1,#818cf8);box-shadow:0 0 16px rgba(99,102,241,0.4);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+      </div>
+      <span style="font-weight:700;font-size:16px;letter-spacing:-0.02em;" class="logo-mark">lumindash</span>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 px-3 py-4 space-y-1" style="position:relative;z-index:1;">
+      <a href="/dashboard" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{if eq .ActiveNav "dashboard"}}active{{end}}" style="color:{{if eq .ActiveNav "dashboard"}}#818cf8{{else}}#94a3b8{{end}};">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        Dashboard
+      </a>
+      <a href="/hosts" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{if eq .ActiveNav "hosts"}}active{{end}}" style="color:{{if eq .ActiveNav "hosts"}}#818cf8{{else}}#94a3b8{{end}};">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/>
+        </svg>
+        Hosts
+      </a>
+      <a href="/metrics" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{if eq .ActiveNav "metrics"}}active{{end}}" style="color:{{if eq .ActiveNav "metrics"}}#818cf8{{else}}#94a3b8{{end}};">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Metrics
+      </a>
+      <a href="/events" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{if eq .ActiveNav "events"}}active{{end}}" style="color:{{if eq .ActiveNav "events"}}#818cf8{{else}}#94a3b8{{end}};">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+        </svg>
+        Events
+      </a>
+      <a href="/config" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{if eq .ActiveNav "config"}}active{{end}}" style="color:{{if eq .ActiveNav "config"}}#818cf8{{else}}#94a3b8{{end}};">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+        </svg>
+        Config
+      </a>
+    </nav>
+
+    <!-- Sidebar footer -->
+    <div class="px-4 py-4" style="border-top:1px solid #2a2d3a; position:relative; z-index:1;">
+      <div class="flex items-center gap-2">
+        <div class="pulse w-2 h-2 rounded-full" style="background:#22c55e;box-shadow:0 0 6px #22c55e;"></div>
+        <span style="font-size:11px; color:#64748b; font-family:'JetBrains Mono',monospace;">DB Connected</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN AREA -->
+  <div id="main-content" class="flex flex-col flex-1 min-h-0 overflow-hidden" style="margin-left:220px;">
+
+    <!-- TOP BAR -->
+    <header style="background:#12151f; border-bottom:1px solid #2a2d3a; flex-shrink:0; position:relative;">
+      <div class="topbar-accent absolute top-0 left-0 right-0"></div>
+      <div class="flex items-center justify-between px-6 py-3 mt-px">
+        <!-- Hamburger + Title -->
+        <div class="flex items-center gap-4">
+          <button onclick="toggleSidebar()" class="md:hidden p-1 rounded" style="color:#64748b;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+          <div>
+            <h1 style="font-size:15px; font-weight:600; color:#f1f5f9; letter-spacing:-0.01em;">{{.Title}}</h1>
+            {{if .Subtitle}}<p style="font-size:11px; color:#64748b; margin-top:1px;">{{.Subtitle}}</p>{{end}}
+          </div>
+        </div>
+
+        <!-- Right side: refresh + status -->
+        <div class="flex items-center gap-4">
+          {{if .LastRefresh}}
+          <div class="flex items-center gap-2" style="font-size:11px; color:#64748b; font-family:'JetBrains Mono',monospace;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            {{.LastRefresh}}
+          </div>
+          {{end}}
+          <div class="flex items-center gap-2 px-3 py-1 rounded-full" style="background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.2);">
+            <div class="w-1.5 h-1.5 rounded-full pulse" style="background:#22c55e;"></div>
+            <span style="font-size:11px; font-weight:500; color:#4ade80;">Connected</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- PAGE CONTENT -->
+    <main class="flex-1 overflow-y-auto p-6" style="background:#0f1117;">
+      {{block "content" .}}{{end}}
+    </main>
+  </div>
+
+  <script>
+    function toggleSidebar() {
+      const s = document.getElementById('sidebar');
+      const o = document.getElementById('sidebar-overlay');
+      s.classList.toggle('open');
+      o.classList.toggle('hidden');
+    }
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('sidebar-overlay').classList.add('hidden');
+    }
+  </script>
+  {{block "scripts" .}}{{end}}
+</body>
+</html>

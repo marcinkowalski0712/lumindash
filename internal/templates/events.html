@@ -1,0 +1,274 @@
+{{template "layout.html" .}}
+
+{{define "head"}}
+<style>
+  /* Event status pill */
+  .ev-problem  { color: #f87171; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); border-radius: 9999px; padding: 2px 10px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+  .ev-resolved { color: #4ade80; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); border-radius: 9999px; padding: 2px 10px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+
+  /* Filter bar */
+  .filter-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 12px 16px; border-bottom: 1px solid #2a2d3a;
+    background: rgba(255,255,255,0.01);
+  }
+
+  /* Table time cell */
+  .time-cell { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #64748b; white-space: nowrap; }
+  .date-part  { font-size: 10px; opacity: 0.7; }
+
+  /* Ack icon */
+  .ack-icon-yes { color: #4ade80; }
+  .ack-icon-no  { color: #2a2d3a; }
+
+  /* Acknowledge modal */
+  #ack-modal {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  }
+  #ack-modal.hidden { display: none; }
+  #ack-modal-box {
+    background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 12px;
+    padding: 24px; width: 420px; max-width: 90vw;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  }
+
+  /* Pagination */
+  .pager { display: flex; align-items: center; gap: 4px; }
+
+  /* Inline action btn in table */
+  .inline-ack {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 9px; border-radius: 5px;
+    font-size: 11px; font-weight: 500;
+    background: rgba(99,102,241,0.1); color: #818cf8;
+    border: 1px solid rgba(99,102,241,0.2); cursor: pointer;
+    transition: all 0.15s; font-family: 'Inter', sans-serif;
+  }
+  .inline-ack:hover { background: rgba(99,102,241,0.22); border-color: rgba(99,102,241,0.5); }
+  .inline-ack:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Duration display */
+  .dur { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #64748b; }
+</style>
+{{end}}
+
+{{define "content"}}
+
+<!-- Acknowledge Modal -->
+<div id="ack-modal" class="hidden">
+  <div id="ack-modal-box">
+    <h3 style="font-size:15px; font-weight:600; color:#f1f5f9; margin:0 0 4px 0;">Acknowledge Event</h3>
+    <p style="font-size:12px; color:#64748b; margin:0 0 16px 0;" id="ack-modal-trigger">—</p>
+    <div>
+      <label style="font-size:12px; font-weight:500; color:#94a3b8; display:block; margin-bottom:6px;">Message (optional)</label>
+      <textarea id="ack-message" rows="3" placeholder="Add acknowledgement note…"
+        style="width:100%; background:#0f1117; border:1px solid #2a2d3a; border-radius:6px; color:#f1f5f9; padding:8px 10px; font-size:13px; font-family:'Inter',sans-serif; resize:vertical; transition:border-color 0.15s; outline:none;"
+        onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#2a2d3a'"></textarea>
+    </div>
+    <div class="flex justify-end gap-3" style="margin-top:16px;">
+      <button onclick="closeAckModal()" style="padding:7px 16px; border-radius:6px; background:transparent; border:1px solid #2a2d3a; color:#94a3b8; font-size:13px; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.borderColor='#64748b'" onmouseout="this.style.borderColor='#2a2d3a'">Cancel</button>
+      <button id="ack-submit-btn" onclick="submitAck()" style="padding:7px 16px; border-radius:6px; background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.4); color:#818cf8; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s;" onmouseover="this.style.background='rgba(99,102,241,0.3)'" onmouseout="this.style.background='rgba(99,102,241,0.2)'">Acknowledge</button>
+    </div>
+  </div>
+</div>
+
+<!-- Main card -->
+<div class="rounded-xl overflow-hidden" style="background:#1a1d27; border:1px solid #2a2d3a;">
+
+  <!-- Filter row -->
+  <div class="filter-row">
+    <!-- Severity -->
+    <form method="GET" action="/events" style="display:contents;" id="filter-form">
+      <select name="severity" onchange="document.getElementById('filter-form').submit()">
+        <option value="">All Severities</option>
+        <option value="5" {{if eq .Filter.Severity 5}}selected{{end}}>Disaster</option>
+        <option value="4" {{if eq .Filter.Severity 4}}selected{{end}}>High</option>
+        <option value="3" {{if eq .Filter.Severity 3}}selected{{end}}>Average</option>
+        <option value="2" {{if eq .Filter.Severity 2}}selected{{end}}>Warning</option>
+        <option value="1" {{if eq .Filter.Severity 1}}selected{{end}}>Info</option>
+      </select>
+
+      <!-- Host -->
+      <select name="host" onchange="document.getElementById('filter-form').submit()">
+        <option value="">All Hosts</option>
+        {{range .Hosts}}
+        <option value="{{.ID}}" {{if eq $.Filter.HostID .ID}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+
+      <!-- Time range -->
+      <select name="timerange" onchange="document.getElementById('filter-form').submit()">
+        <option value="1h"   {{if eq .Filter.TimeRange "1h"}}selected{{end}}>Last 1 hour</option>
+        <option value="6h"   {{if eq .Filter.TimeRange "6h"}}selected{{end}}>Last 6 hours</option>
+        <option value="24h"  {{if eq .Filter.TimeRange "24h"}}selected{{end}}>Last 24 hours</option>
+        <option value="7d"   {{if eq .Filter.TimeRange "7d"}}selected{{end}}>Last 7 days</option>
+        <option value="30d"  {{if eq .Filter.TimeRange "30d"}}selected{{end}}>Last 30 days</option>
+      </select>
+
+      <!-- Status -->
+      <select name="status" onchange="document.getElementById('filter-form').submit()">
+        <option value="">All Status</option>
+        <option value="problem"  {{if eq .Filter.Status "problem"}}selected{{end}}>Problem</option>
+        <option value="resolved" {{if eq .Filter.Status "resolved"}}selected{{end}}>Resolved</option>
+      </select>
+
+      <!-- hidden page reset -->
+      <input type="hidden" name="page" value="1" />
+    </form>
+
+    <div style="margin-left:auto; font-size:12px; color:#64748b; font-family:'JetBrains Mono',monospace;">
+      {{.TotalEvents}} events
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="overflow-x-auto">
+    <table class="w-full zebra" style="border-collapse:collapse;">
+      <thead>
+        <tr style="background:rgba(255,255,255,0.02);">
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Time</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Host</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Trigger</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Severity</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Status</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Duration</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;">Ack</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Events}}
+        <tr class="table-row-hover">
+          <td style="padding:10px 16px;">
+            <div class="time-cell">{{.TimeStr}}</div>
+            <div class="time-cell date-part">{{.DateStr}}</div>
+          </td>
+          <td style="padding:10px 16px;">
+            <a href="/hosts/{{.HostID}}" style="font-size:13px; font-weight:500; color:#818cf8; text-decoration:none;" onmouseover="this.style.color='#a5b4fc'" onmouseout="this.style.color='#818cf8'">{{.HostName}}</a>
+          </td>
+          <td style="padding:10px 16px; max-width:280px;">
+            <div style="font-size:12px; color:#e2e8f0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{.TriggerName}}">{{.TriggerName}}</div>
+          </td>
+          <td style="padding:10px 16px;">
+            {{if eq .Severity 5}}<span class="badge badge-disaster">Disaster</span>
+            {{else if eq .Severity 4}}<span class="badge badge-high">High</span>
+            {{else if eq .Severity 3}}<span class="badge badge-average">Average</span>
+            {{else if eq .Severity 2}}<span class="badge badge-warning">Warning</span>
+            {{else}}<span class="badge badge-info">Info</span>{{end}}
+          </td>
+          <td style="padding:10px 16px;">
+            {{if eq .Status 1}}<span class="ev-problem">PROBLEM</span>
+            {{else}}<span class="ev-resolved">RESOLVED</span>{{end}}
+          </td>
+          <td style="padding:10px 16px;">
+            <span class="dur">{{.Duration}}</span>
+          </td>
+          <td style="padding:10px 16px; text-align:center;">
+            {{if .Acknowledged}}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" class="ack-icon-yes"><polyline points="20 6 9 17 4 12"/></svg>
+            {{else}}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2a2d3a" stroke-width="2" class="ack-icon-no"><polyline points="20 6 9 17 4 12"/></svg>
+            {{end}}
+          </td>
+          <td style="padding:10px 16px;" onclick="event.stopPropagation()">
+            {{if and (eq .Status 1) (not .Acknowledged)}}
+            <button class="inline-ack" onclick="openAckModal({{.EventID}}, '{{.TriggerName}}', this)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Ack
+            </button>
+            {{end}}
+          </td>
+        </tr>
+        {{else}}
+        <tr>
+          <td colspan="8" style="padding:48px; text-align:center; color:#64748b; font-size:13px;">
+            No events match the current filter.
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {{if gt .TotalPages 1}}
+  <div class="flex items-center justify-between px-5 py-3" style="border-top:1px solid #2a2d3a;">
+    <div style="font-size:12px; color:#64748b; font-family:'JetBrains Mono',monospace;">
+      Page {{.CurrentPage}} of {{.TotalPages}} &middot; {{.TotalEvents}} events
+    </div>
+    <div class="pager">
+      {{if gt .CurrentPage 1}}
+      <a href="?page={{.PrevPage}}&severity={{.Filter.Severity}}&host={{.Filter.HostID}}&timerange={{.Filter.TimeRange}}&status={{.Filter.Status}}" class="page-btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </a>
+      {{end}}
+      {{range .PageNumbers}}
+      <a href="?page={{.}}&severity={{$.Filter.Severity}}&host={{$.Filter.HostID}}&timerange={{$.Filter.TimeRange}}&status={{$.Filter.Status}}" class="page-btn {{if eq . $.CurrentPage}}active{{end}}">{{.}}</a>
+      {{end}}
+      {{if lt .CurrentPage .TotalPages}}
+      <a href="?page={{.NextPage}}&severity={{.Filter.Severity}}&host={{.Filter.HostID}}&timerange={{.Filter.TimeRange}}&status={{.Filter.Status}}" class="page-btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+  let activeEventId = null;
+  let activeBtn = null;
+
+  function openAckModal(eventId, triggerName, btn) {
+    activeEventId = eventId;
+    activeBtn = btn;
+    document.getElementById('ack-modal-trigger').textContent = triggerName;
+    document.getElementById('ack-message').value = '';
+    document.getElementById('ack-modal').classList.remove('hidden');
+  }
+
+  function closeAckModal() {
+    document.getElementById('ack-modal').classList.add('hidden');
+    activeEventId = null; activeBtn = null;
+  }
+
+  async function submitAck() {
+    if (!activeEventId) return;
+    const msg = document.getElementById('ack-message').value;
+    const submitBtn = document.getElementById('ack-submit-btn');
+    submitBtn.disabled = true; submitBtn.textContent = 'Sending…';
+
+    try {
+      const resp = await fetch('/api/events/' + activeEventId + '/acknowledge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg }),
+      });
+      if (resp.ok) {
+        closeAckModal();
+        if (activeBtn) {
+          activeBtn.parentElement.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+        }
+      } else {
+        submitBtn.textContent = 'Error';
+        setTimeout(() => { submitBtn.textContent = 'Acknowledge'; submitBtn.disabled = false; }, 2000);
+      }
+    } catch(e) {
+      submitBtn.textContent = 'Error';
+      setTimeout(() => { submitBtn.textContent = 'Acknowledge'; submitBtn.disabled = false; }, 2000);
+    }
+  }
+
+  // Close on overlay click
+  document.getElementById('ack-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeAckModal();
+  });
+  // Close on Escape
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAckModal(); });
+</script>
+{{end}}
