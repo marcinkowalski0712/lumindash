@@ -1,0 +1,38 @@
+services:
+
+  lumindash:
+    build: .
+    ports:
+      - "8090:8090"
+    environment:
+      ZBX_DB_HOST: postgres
+      ZBX_DB_PORT: "5432"
+      ZBX_DB_USER: zabbix
+      ZBX_DB_PASS: zabbix
+      ZBX_DB_NAME: zabbix
+      ZBX_API_URL: http://zabbix-server/api_jsonrpc.php
+      ZBX_API_USER: Admin
+      ZBX_API_PASS: zabbix
+      LISTEN_ADDR: ":8090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD: zabbix
+      POSTGRES_DB: zabbix
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zabbix"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata:
